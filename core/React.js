@@ -29,8 +29,10 @@ function render(el, container) {
       children: [el]
     }
   }
+  root = nextWorkOfUnit
 }
 
+let root = null
 let nextWorkOfUnit = null
 function workLoop(deadline) {
   let shouldYield = false;
@@ -40,7 +42,24 @@ function workLoop(deadline) {
     // 判断是否需要让出时间片
     shouldYield = deadline.timeRemaining() < 1;
   }
+
+  // 树执行结束，开始统一提交
+  if(!nextWorkOfUnit && root) {
+    commitRoot()
+  }
+
   requestIdleCallback(workLoop);
+}
+
+function commitRoot() {
+  commitWork(root.child)
+}
+
+function commitWork(fiber) {
+  if(!fiber) return
+  fiber.parent.dom.appendChild(fiber.dom);
+  commitWork(fiber.child)
+  commitWork(fiber.sibling)
 }
 
 function createDom(type) {
@@ -85,8 +104,6 @@ function performWorkOfUnit(fiber) {
 
     //2. 处理props
     updateProps(dom, fiber.props)
-
-    fiber.parent?.dom.appendChild(dom)
   }
 
   //3. 转换链表，设置指针
