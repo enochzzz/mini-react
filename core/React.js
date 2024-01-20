@@ -9,7 +9,6 @@ function createTextNode(text) {
 }
 
 function createElement(type, props, ...children) {
-  console.log('createElement----------------', type, props, children)
   return {
     type,
     props: {
@@ -36,6 +35,7 @@ function render(el, container) {
 }
 
 let wipRoot = null
+let wipFiber = null
 let currentRoot = null
 let nextWorkOfUnit = null
 let deletions = []
@@ -44,6 +44,11 @@ function workLoop(deadline) {
   while (!shouldYield && nextWorkOfUnit) {
     // 执行任务
     nextWorkOfUnit = performWorkOfUnit(nextWorkOfUnit)
+
+    // 更新的结束位置
+    if(wipRoot?.sibling?.type === nextWorkOfUnit?.type) {
+      nextWorkOfUnit = null
+    }
     // 判断是否需要让出时间片
     shouldYield = deadline.timeRemaining() < 1;
   }
@@ -199,6 +204,7 @@ function reconcileChildren(fiber, children) {
 }
 
 function updateFunctionComponent(fiber) {
+  wipFiber = fiber
   const children = [fiber.type(fiber.props)]
   reconcileChildren(fiber, children)
 }
@@ -244,13 +250,15 @@ requestIdleCallback(workLoop);
 
 function update() {
   // 配合一直循环的调度器生成新的vdom树
-  wipRoot = {
-    dom: currentRoot.dom,
-    props: currentRoot.props,
-    // 指向老的节点
-    alternate: currentRoot,
+  let currentFiber = wipFiber
+  return () => {
+    wipRoot = {
+      ...currentFiber,
+      // 指向老的节点
+      alternate: currentFiber,
+    }
+    nextWorkOfUnit = wipRoot
   }
-  nextWorkOfUnit = wipRoot
 }
 
 const React = {

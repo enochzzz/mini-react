@@ -1,31 +1,53 @@
 import React from "../core/React.js";
 
 
-let show = false
-function Counter({ num }) {
-  // const Foo = <div>foo</div>
-  function Foo() {
-    return <div>foo</div>
-  }
-  const Bar = <div>bar</div>
+let countBar = 1
+function Bar() {
+  console.log("Bar")
+  const update = React.update()
   function handleClick() {
-    console.log("click")
-    show = !show
-    React.update()
+    countBar++
+    update()
   }
   return (
     <div>
-      {show && Bar}
-      <button onClick={handleClick}>show</button>
+      countBar: {countBar}
+      <button onClick={handleClick}>BarClick</button>
+    </div>
+  )
+}
+let countFoo = 1
+function Foo() {
+  console.log("Foo")
+  const update = React.update()
+  function handleClick() {
+    countFoo++
+    update()
+  }
+  return (
+    <div>
+      countFoo: {countFoo}
+      <button onClick={handleClick}>FooClick</button>
     </div>
   )
 }
 
+let currentRoot = 1
 function App() {
-  return <div>
-    hello world
-    <Counter num={10}></Counter>
-  </div>
+  console.log("App")
+  const update = React.update()
+  function handleClick() {
+    currentRoot++
+    update()
+  }
+  return (
+    <div>
+      currentRoot: {currentRoot}
+      <button onClick={handleClick}>FooClick</button>
+      <Foo></Foo>
+      <Bar></Bar>
+    </div>
+  )
 }
 
 export default App;
