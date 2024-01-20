@@ -1,18 +1,22 @@
 import React from "../core/React.js";
 
 
-let count = 10
+let show = false
 function Counter({ num }) {
+  // const Foo = <div>foo</div>
+  function Foo() {
+    return <div>foo</div>
+  }
+  const Bar = <div>bar</div>
   function handleClick() {
     console.log("click")
-    count++
+    show = !show
     React.update()
   }
   return (
     <div>
-      count:{count}
-      <button onClick={handleClick}>click</button>
-      <div>num-{num}</div>
+      {show && Bar}
+      <button onClick={handleClick}>show</button>
     </div>
   )
 }
@@ -21,7 +25,6 @@ function App() {
   return <div>
     hello world
     <Counter num={10}></Counter>
-    <Counter num={20}></Counter>
   </div>
 }
 

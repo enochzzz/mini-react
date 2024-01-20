@@ -14,10 +14,12 @@ function createElement(type, props, ...children) {
     type,
     props: {
       ...props,
-      children: children.map(child =>
-        typeof child === 'object'
-          ? child
-          : createTextNode(child)
+      children: children.map(child => {
+        const isTextNode = typeof child === 'string' || typeof child === 'number';
+        return isTextNode
+          ? createTextNode(child)
+          : child
+      }
       )
     }
   }
@@ -36,6 +38,7 @@ function render(el, container) {
 let wipRoot = null
 let currentRoot = null
 let nextWorkOfUnit = null
+let deletions = []
 function workLoop(deadline) {
   let shouldYield = false;
   while (!shouldYield && nextWorkOfUnit) {
@@ -54,9 +57,27 @@ function workLoop(deadline) {
 }
 
 function commitRoot() {
+  deletions.forEach(commitDeletions)
   commitWork(wipRoot.child)
   currentRoot = wipRoot
   wipRoot = null
+  deletions = []
+}
+
+function commitDeletions(fiber) {
+  // 如果不是function component这么处理就行。fc需要考虑找不到child或者parent时需要向上或者向下的问题
+  // fiber.parent.dom.removeChild(fiber.dom)
+
+  if (fiber.dom) {
+    let fiberParent = fiber.parent;
+    while (!fiberParent.dom) {
+      fiberParent = fiberParent.parent
+    }
+    fiberParent.dom.removeChild(fiber.dom)
+  } else {
+    //fc需要考虑找不到child或者parent时需要向上或者向下的问题
+    commitDeletions(fiber.child)
+  }
 }
 
 function commitWork(fiber) {
@@ -99,13 +120,13 @@ function updateProps(dom, nextProps, prevProps) {
   // 2/3两种其实可以看作一种情况，old没有可以视作undefined，不相等
   Object.keys(nextProps).forEach(key => {
     if (key !== "children") {
-      if(nextProps[key] !== prevProps[key]) {
+      if (nextProps[key] !== prevProps[key]) {
         if (key.startsWith('on')) {
           const eventType = key.slice(2).toLowerCase()
           dom.removeEventListener(eventType, prevProps[key])
           dom.addEventListener(eventType, nextProps[key])
         } else {
-  
+
           dom[key] = nextProps[key];
         }
       }
@@ -136,15 +157,22 @@ function reconcileChildren(fiber, children) {
       }
     } else {
       // create
-      newFiber = {
-        type: child.type,
-        props: child.props,
-        child: null,
-        parent: fiber,
-        sibling: null,
-        dom: null,
-        // 新建的标识
-        effectTag: "placement"
+      if (child) {
+        newFiber = {
+          type: child.type,
+          props: child.props,
+          child: null,
+          parent: fiber,
+          sibling: null,
+          dom: null,
+          // 新建的标识
+          effectTag: "placement"
+        }
+      }
+
+      // 如果有oldFiber，且isSameType为false，那么创建新节点，且需要统一收集需要删除的节点
+      if (oldFiber) {
+        deletions.push(oldFiber)
       }
     }
 
@@ -153,13 +181,21 @@ function reconcileChildren(fiber, children) {
       oldFiber = oldFiber.sibling
     }
 
-    if (index === 0) {
+    if (index === 0 || !prevChild) {
       fiber.child = newFiber
     } else {
-      prevChild.sibling = newFiber
+      prevChild && (prevChild.sibling = newFiber)
     }
-    prevChild = newFiber
+
+    if (newFiber) {
+      prevChild = newFiber
+    }
   });
+
+  while (oldFiber) {
+    deletions.push(oldFiber)
+    oldFiber = oldFiber.sibling
+  }
 }
 
 function updateFunctionComponent(fiber) {
@@ -184,15 +220,12 @@ function updateHostComponent(fiber) {
 function performWorkOfUnit(fiber) {
   const isFunctionComponent = fiber.type instanceof Function;
 
+  //3. 转换链表，设置指针
   if (isFunctionComponent) {
     updateFunctionComponent(fiber)
   } else {
     updateHostComponent(fiber)
   }
-
-  //3. 转换链表，设置指针
-  const children = isFunctionComponent ? [fiber.type(fiber.props)] : fiber.props.children;
-  reconcileChildren(fiber, children)
 
   //4. 返回下一个要执行的任务
   if (fiber.child) {
