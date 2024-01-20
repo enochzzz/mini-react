@@ -1,11 +1,20 @@
 import React from "../core/React.js";
 
-// const App = React.createElement("div", { id: "app" }, "ni hao")
 
-const AppOne = <div></div>
-
+let count = 10
 function Counter({ num }) {
-  return <div>{num}</div>
+  function handleClick() {
+    console.log("click")
+    count++
+    React.update()
+  }
+  return (
+    <div>
+      count:{count}
+      <button onClick={handleClick}>click</button>
+      <div>num-{num}</div>
+    </div>
+  )
 }
 
 function App() {
@@ -15,5 +24,5 @@ function App() {
     <Counter num={20}></Counter>
   </div>
 }
-console.log(App, AppOne)
+
 export default App;
