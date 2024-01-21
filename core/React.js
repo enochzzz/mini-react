@@ -96,7 +96,7 @@ function commitEffectHook() {
   }
   function runCleanUp(fiber) {
     if(!fiber) return
-    fiber?.alternate?.effectHooks.forEach(hook => {
+    fiber?.alternate?.effectHooks?.forEach(hook => {
       if(hook.deps.length > 0) {
         hook.cleanUp && hook.cleanUp()
       }
