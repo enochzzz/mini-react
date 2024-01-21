@@ -46,7 +46,7 @@ function workLoop(deadline) {
     nextWorkOfUnit = performWorkOfUnit(nextWorkOfUnit)
 
     // 更新的结束位置
-    if(wipRoot?.sibling?.type === nextWorkOfUnit?.type) {
+    if (wipRoot?.sibling?.type === nextWorkOfUnit?.type) {
       nextWorkOfUnit = null
     }
     // 判断是否需要让出时间片
@@ -64,9 +64,37 @@ function workLoop(deadline) {
 function commitRoot() {
   deletions.forEach(commitDeletions)
   commitWork(wipRoot.child)
+  commitEffectHook()
   currentRoot = wipRoot
   wipRoot = null
   deletions = []
+}
+
+function commitEffectHook() {
+  function run(fiber) {
+    if (!fiber) return
+
+    if (!fiber.alternate) {
+      // init
+      fiber.effectHooks?.forEach((effectHook) => {
+        effectHook?.callback()
+      })
+    } else {
+      //  update 检测deps有没有改变
+      fiber.effectHooks?.forEach((newHook, index) => {
+        if (newHook.deps.length > 0) {
+          const oldHook = fiber?.alternate?.effectHooks[index]
+          const needUpdate = oldHook?.deps.some((oldDep, i) => {
+            return oldDep !== newHook.deps[i]
+          })
+          needUpdate && newHook?.callback()
+        }
+      })
+    }
+    run(fiber.child)
+    run(fiber.sibling)
+  }
+  run(wipRoot)
 }
 
 function commitDeletions(fiber) {
@@ -204,6 +232,7 @@ function reconcileChildren(fiber, children) {
 }
 
 function updateFunctionComponent(fiber) {
+  effectHooks = []
   stateHooks = []
   stateHookIndex = 0
   wipFiber = fiber
@@ -250,19 +279,6 @@ function performWorkOfUnit(fiber) {
 requestIdleCallback(workLoop);
 
 
-function update() {
-  // 配合一直循环的调度器生成新的vdom树
-  let currentFiber = wipFiber
-  return () => {
-    wipRoot = {
-      ...currentFiber,
-      // 指向老的节点
-      alternate: currentFiber,
-    }
-    nextWorkOfUnit = wipRoot
-  }
-}
-
 let stateHooks
 let stateHookIndex
 function useState(initialState) {
@@ -274,7 +290,7 @@ function useState(initialState) {
     queue: oldHook ? oldHook.queue : []
   }
 
-  stateHook.queue.forEach(action =>{
+  stateHook.queue.forEach(action => {
     stateHook.state = action(stateHook.state)
   })
 
@@ -285,7 +301,11 @@ function useState(initialState) {
   currentFiber.stateHooks = stateHooks
 
   function setState(action) {
-    // stateHook.state = action(stateHook.state)
+    const eagerState =
+      typeof action === 'function' ? action(stateHook.state) : action
+
+    if (eagerState === stateHook.state) return
+
     stateHook.queue.push(typeof action === 'function' ? action : () => action)
     wipRoot = {
       ...currentFiber,
@@ -296,11 +316,22 @@ function useState(initialState) {
   }
   return [stateHook.state, setState]
 }
+
+let effectHooks
+function useEffect(callback, deps) {
+  const effectHook = {
+    callback,
+    deps,
+  }
+  effectHooks.push(effectHook)
+  wipFiber.effectHooks = effectHooks
+}
+
 const React = {
   createElement,
   render,
-  update,
-  useState
+  useState,
+  useEffect
 }
 
 export default React;

@@ -5,16 +5,20 @@ let countFoo = 1
 function Foo() {
   console.log("Foo")
   const [count, setCount] = React.useState(10)
-  const [count2, setCount2] = React.useState(15)
   function handleClick() {
     console.log("handleClick")
     setCount((c) => c + 1)
-    setCount2((c) => c + 2)
   }
+
+  React.useEffect(() => {
+    console.log('init')
+  }, [])
+  React.useEffect(() => {
+    console.log('update')
+  }, [count])
   return (
     <div>
       countFoo: {count}
-      count2Foo: {count2}
       <button onClick={handleClick}>FooClick</button>
     </div>
   )
