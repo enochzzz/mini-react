@@ -261,10 +261,32 @@ function update() {
   }
 }
 
+function useState(initialState) {
+
+  let currentFiber = wipFiber
+  const oldHook = currentFiber.alternate?.stateHook
+  const stateHook = {
+    state: oldHook ? oldHook.state : initialState,
+  }
+
+  currentFiber.stateHook = stateHook
+
+  function setState(action) {
+    stateHook.state = action(stateHook.state)
+    wipRoot = {
+      ...currentFiber,
+      // 指向老的节点
+      alternate: currentFiber,
+    }
+    nextWorkOfUnit = wipRoot
+  }
+  return [stateHook.state, setState]
+}
 const React = {
   createElement,
   render,
-  update
+  update,
+  useState
 }
 
 export default React;
