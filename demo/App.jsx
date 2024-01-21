@@ -12,9 +12,15 @@ function Foo() {
 
   React.useEffect(() => {
     console.log('init')
+    return () => {
+      console.log('init-clean')
+    }
   }, [])
   React.useEffect(() => {
     console.log('update')
+    return () => {
+      console.log('update-clean')
+    }
   }, [count])
   return (
     <div>
